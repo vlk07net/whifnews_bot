@@ -13,9 +13,10 @@ BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 if not BOT_TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN is not set.")
 
-SITE_URL = "https://europe-times.net/"
+SITE_URL = "https://www.whifnews.com/"
 CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "").strip()
-BRAND = "Europe Times"
+BRAND = "WHIF"
+BRAND_FULL = "WHIF — What's happening in France"
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
@@ -28,155 +29,215 @@ def btn(text, data):
 
 
 def site_btn():
-    return types.InlineKeyboardButton(
-        text=f"🌐 Open {BRAND}",
-        url=SITE_URL,
-    )
+    # Secondary action only: shown in Contents and About, never on guide pages.
+    return types.InlineKeyboardButton(text=f"🌐 {BRAND} website", url=SITE_URL)
 
 
 def make_markup(rows):
     markup = types.InlineKeyboardMarkup()
     for row in rows:
-        row = [button for button in row if button is not None]
+        row = [b for b in row if b is not None]
         if row:
             markup.row(*row)
     return markup
 
 
-BTN_HEADLINES = ("📋 Today's stories", "headlines")
+BTN_GUIDE = ("🧭 The guide", "guide")
 BTN_MENU = ("🗂 Contents", "menu")
 
 
-def article_rows():
-    return [
-        [site_btn()],
-        [btn(*BTN_HEADLINES), btn(*BTN_MENU)],
-    ]
+def guide_page_rows(next_key=None, next_label=None):
+    rows = []
+    if next_key:
+        rows.append([btn(f"➡️ Next: {next_label}", next_key)])
+    rows.append([btn(*BTN_GUIDE), btn(*BTN_MENU)])
+    return rows
 
 
 # ============================================
 # SCREEN TEXTS
 # ============================================
 TEXT_START = (
-    f"🇧🇪 <b>Welcome to {BRAND}!</b>\n\n"
-    "<i>A small seasonal guide to culture, food and travel in Belgium.</i>\n\n"
-    "Each season, a short selection of reads to enjoy right here in the chat.\n\n"
-    "To begin, tap <b>Today's stories</b>."
+    f"🇫🇷 <b>Welcome to {BRAND}!</b>\n\n"
+    "<i>A pocket guide to France, right here in Telegram.</i>\n\n"
+    "Sights, regions, food and practical tips for your trip — "
+    "short, readable chapters you can open without leaving the chat.\n\n"
+    "To begin, tap <b>The guide</b>."
 )
 
-TEXT_HEADLINES = (
-    "📋 <b>Today's stories</b>\n\n"
-    "Three reads picked for today, each available in full in the chat.\n\n"
-    "<b>Culture</b> — five exhibitions to see this autumn.\n\n"
-    "<b>Food</b> — four classic Belgian recipes.\n\n"
-    "<b>Travel</b> — five villages for a weekend away.\n\n"
-    "Tap a title to open the article."
+TEXT_GUIDE = (
+    "🧭 <b>The guide</b>\n\n"
+    "Six short chapters about France, all readable in the chat:\n\n"
+    "🗼 <b>Paris</b> — the essentials in a few days.\n"
+    "🏰 <b>Regions</b> — where to go beyond the capital.\n"
+    "🏡 <b>Villages</b> — five places for a quiet weekend.\n"
+    "🥐 <b>Food</b> — dishes to try and how French meals work.\n"
+    "🚆 <b>Getting around</b> — trains, cars and cities.\n"
+    "💡 <b>Good to know</b> — etiquette, money and everyday tips.\n\n"
+    "Tap a chapter to open it."
 )
 
-TEXT_CULTURE = (
-    "🎨 <b>Five exhibitions to see this autumn</b>\n\n"
-    "<b>Brussels — Magritte and Surrealism</b>\n"
-    "The Magritte Museum presents a retrospective with rarely shown "
-    "works on loan from private collections. A dialogue between dream "
-    "and reality.\n\n"
-    "<b>Antwerp — Rubens Rediscovered</b>\n"
-    "The Royal Museum of Fine Arts offers a fresh look at Rubens "
-    "through modern restoration techniques. Details unseen for four "
-    "centuries.\n\n"
-    "<b>Ghent — Flemish Contemporary Art</b>\n"
-    "S.M.A.K. hosts a new generation of Belgian artists. Installation, "
-    "video and sculpture in dialogue with the permanent collection.\n\n"
-    "<b>Liège — Industrial Photography</b>\n"
-    "La Boverie presents a century of images from the Walloon steel "
-    "basin. A documentary and poetic look at a vanished world.\n\n"
-    "<b>Bruges — Medieval Manuscripts</b>\n"
-    "The Groeningemuseum unveils illuminated manuscripts from the "
-    "15th century. A rare chance to see treasures usually kept in "
-    "storage.\n\n"
-    "<i>Dates and opening hours: please check the museums' official sites.</i>"
+TEXT_PARIS = (
+    "🗼 <b>Paris: the essentials</b>\n\n"
+    "<b>The Louvre and the Tuileries</b>\n"
+    "One of the largest museums in the world. Pick one or two wings "
+    "rather than trying to see everything, and book a time slot ahead.\n\n"
+    "<b>Musée d'Orsay</b>\n"
+    "A former railway station full of Impressionist paintings: Monet, "
+    "Renoir, Degas, Van Gogh. Smaller and calmer than the Louvre.\n\n"
+    "<b>Le Marais</b>\n"
+    "Old mansions, small museums, the Place des Vosges and some of the "
+    "best falafel in the city. Best explored on foot.\n\n"
+    "<b>Montmartre</b>\n"
+    "The hill of Sacré-Cœur, with village-like streets and a wide view "
+    "over the rooftops. Go early in the morning to avoid the crowds.\n\n"
+    "<b>The Seine at dusk</b>\n"
+    "Walk from Notre-Dame towards the Eiffel Tower along the quays — "
+    "the classic free way to see the city.\n\n"
+    "<i>Opening hours and prices change: check official sites before you go.</i>"
 )
 
-TEXT_CUISINE = (
-    "🍺 <b>Four classic Belgian recipes</b>\n\n"
-    "<b>Flemish carbonade</b>\n"
-    "Beef slow-cooked in brown ale with gingerbread and mustard. "
-    "Two hours of gentle cooking. Serve with fries, of course.\n\n"
-    "<b>Mussels and fries</b>\n"
-    "Fresh mussels cooked in white wine with celery, onion and "
-    "parsley. Belgian fries are cut thick and fried twice. The "
-    "national dish.\n\n"
-    "<b>Ghent waterzooi</b>\n"
-    "A creamy stew of chicken or fish with carrots, leeks and "
-    "potatoes. From Ghent, the ultimate comfort food for autumn days.\n\n"
-    "<b>Liège waffles</b>\n"
-    "Brioche-style dough with pearl sugar, cooked until caramelised. "
-    "Irresistible while warm. The secret: good butter.\n\n"
-    "<i>Amounts and cooking times can be adjusted to taste.</i>"
+TEXT_REGIONS = (
+    "🏰 <b>Regions beyond Paris</b>\n\n"
+    "<b>Loire Valley</b>\n"
+    "Renaissance châteaux such as Chambord and Chenonceau, vineyards "
+    "and flat cycling routes along the river.\n\n"
+    "<b>Provence</b>\n"
+    "Lavender fields in early summer, hilltop villages, Roman heritage "
+    "in Arles and Nîmes, and the markets of Aix-en-Provence.\n\n"
+    "<b>Normandy</b>\n"
+    "Mont-Saint-Michel, the D-Day beaches, half-timbered Honfleur and "
+    "the cliffs of Étretat. Cider and Camembert country.\n\n"
+    "<b>Alsace</b>\n"
+    "Colourful towns like Colmar, a wine route through the vineyards "
+    "and a cuisine that mixes French and German influences.\n\n"
+    "<b>The Alps</b>\n"
+    "Skiing in winter, lakes and hiking in summer. Annecy is an easy "
+    "and beautiful starting point."
 )
 
-TEXT_TRAVEL = (
-    "🏠 <b>Five villages for an autumn weekend</b>\n\n"
-    "<b>Durbuy (Luxembourg province)</b>\n"
-    "Said to be the smallest town in the world. Medieval lanes, fine "
-    "dining and the topiary park. Perfect for a weekend for two.\n\n"
-    "<b>Crupet (Namur province)</b>\n"
-    "A postcard village with its 12th-century keep and a grotto "
-    "dedicated to Saint Anthony. The autumn colours are spectacular.\n\n"
-    "<b>Torgny (Luxembourg province)</b>\n"
-    "Belgium's southernmost village. Roman-tiled roofs, vineyards and "
-    "a surprisingly mild microclimate.\n\n"
-    "<b>Redu (Luxembourg province)</b>\n"
-    "The book village: many second-hand booksellers in a tiny place. "
-    "Literary browsing and walks in the Ardennes forest.\n\n"
-    "<b>Foy-Notre-Dame (Namur province)</b>\n"
-    "A hamlet around a 17th-century church with a remarkable painted "
-    "ceiling. Hiking trails across the wooded hills of the Meuse.\n\n"
-    "<i>For lodging, midweek booking is recommended.</i>"
+TEXT_VILLAGES = (
+    "🏡 <b>Five villages for a weekend</b>\n\n"
+    "<b>Gordes (Provence)</b>\n"
+    "Stone houses stacked on a hillside above the Luberon valley. "
+    "The nearby Sénanque Abbey is famous for its lavender.\n\n"
+    "<b>Rocamadour (Occitanie)</b>\n"
+    "A pilgrimage village built into a cliff above a canyon. "
+    "Spectacular at night when it is lit up.\n\n"
+    "<b>Eguisheim (Alsace)</b>\n"
+    "Concentric cobbled lanes, flower-covered houses and wine "
+    "cellars. A short drive from Colmar.\n\n"
+    "<b>Saint-Cirq-Lapopie (Occitanie)</b>\n"
+    "A medieval village perched above the Lot river, with views "
+    "that reward the climb.\n\n"
+    "<b>Yvoire (Haute-Savoie)</b>\n"
+    "A small fortified village on the shore of Lake Geneva, with a "
+    "garden of the five senses.\n\n"
+    "<i>Weekends and summer are busy: arrive early or stay overnight.</i>"
+)
+
+TEXT_FOOD = (
+    "🥐 <b>Food: what to try</b>\n\n"
+    "<b>At the bakery</b>\n"
+    "A fresh baguette, croissants and pains au chocolat in the "
+    "morning. Look for bakeries that bake on site.\n\n"
+    "<b>Classic dishes</b>\n"
+    "Bœuf bourguignon (beef stewed in red wine), coq au vin, "
+    "ratatouille, quiche lorraine and, in Marseille, bouillabaisse.\n\n"
+    "<b>Cheese</b>\n"
+    "France has hundreds of cheeses. Start with Comté, Brie, "
+    "Roquefort and a fresh goat's cheese.\n\n"
+    "<b>Crêpes and galettes</b>\n"
+    "From Brittany: sweet crêpes and savoury buckwheat galettes, "
+    "traditionally with a bowl of cider.\n\n"
+    "<b>How meals work</b>\n"
+    "Lunch is often the main meal, and many restaurants offer a set "
+    "menu (<i>formule</i>) at midday. Dinner usually starts around "
+    "19:30–20:00."
+)
+
+TEXT_TRANSPORT = (
+    "🚆 <b>Getting around</b>\n\n"
+    "<b>High-speed trains</b>\n"
+    "TGV trains connect Paris with Lyon, Marseille, Bordeaux, "
+    "Strasbourg and more in a few hours. Book early for lower fares.\n\n"
+    "<b>Regional trains</b>\n"
+    "TER trains serve smaller towns. Great for day trips from "
+    "regional cities.\n\n"
+    "<b>In Paris</b>\n"
+    "The metro is the fastest way around. Walking between central "
+    "districts is often just as pleasant.\n\n"
+    "<b>By car</b>\n"
+    "Best for villages and the countryside. Motorways usually have "
+    "tolls (<i>péage</i>), and city centres can be hard to park in.\n\n"
+    "<b>By bike</b>\n"
+    "Many cities have bike-share schemes, and there are long "
+    "cycling routes along the Loire and the Atlantic coast."
+)
+
+TEXT_TIPS = (
+    "💡 <b>Good to know</b>\n\n"
+    "<b>Say bonjour</b>\n"
+    "Greet people when you enter a shop or café. A simple "
+    "\"Bonjour\" makes a real difference.\n\n"
+    "<b>Money</b>\n"
+    "The currency is the euro. Cards are widely accepted, but keep "
+    "a little cash for markets and small cafés.\n\n"
+    "<b>Tipping</b>\n"
+    "Service is included in restaurant prices. Leaving small change "
+    "for good service is a nice gesture, not an obligation.\n\n"
+    "<b>Opening hours</b>\n"
+    "In smaller towns, many shops close at lunchtime and on Sundays. "
+    "Some museums close one day a week.\n\n"
+    "<b>Water</b>\n"
+    "Tap water is safe to drink. Ask for <i>une carafe d'eau</i> "
+    "in restaurants — it's free."
 )
 
 TEXT_MENU = (
     "🗂 <b>Contents</b>\n\n"
     "From this menu you can:\n\n"
-    "• Read <b>today's stories</b> and the articles, right here.\n"
-    "• Browse the sections: Culture, Food, Travel.\n"
+    "• Read <b>the guide</b> to France, right here in the chat.\n"
     "• Check the glossary and frequently asked questions.\n"
-    "• Learn more about the project and get in touch."
+    "• Learn more about the project and get in touch.\n\n"
+    f"For news about France in English, you can also visit the "
+    f"<b>{BRAND}</b> website."
 )
 
 TEXT_GLOSSARY = (
     "📖 <b>Little glossary</b>\n\n"
-    "<b>Beguinage</b> — a cluster of houses around a courtyard where "
-    "the Beguines once lived. Several are UNESCO-listed.\n\n"
-    "<b>Estaminet</b> — a traditional, cosy and unpretentious café, "
-    "typical of Flanders and the north.\n\n"
-    "<b>Kermesse</b> — a village fair with a funfair, music and local "
-    "specialities.\n\n"
-    "<b>Speculoos</b> — a spiced cinnamon biscuit, a Belgian emblem.\n\n"
-    "<b>Ducasse</b> — a local Walloon festival, often with processions "
-    "and giant figures.\n\n"
-    "<b>Zwanze</b> — Brussels humour: teasing and self-deprecating."
+    "<b>Boulangerie</b> — a bakery that bakes bread on site.\n\n"
+    "<b>Brasserie</b> — a relaxed restaurant with long opening hours "
+    "and classic dishes.\n\n"
+    "<b>Formule</b> — a fixed-price set menu, often at lunchtime.\n\n"
+    "<b>Marché</b> — an open-air market, usually held on set "
+    "mornings each week.\n\n"
+    "<b>Péage</b> — a motorway toll.\n\n"
+    "<b>Apéro</b> — a pre-dinner drink with small snacks, a much-"
+    "loved French ritual."
 )
 
 TEXT_FAQ = (
     "❓ <b>Frequently asked questions</b>\n\n"
-    "<b>Is this bot official?</b>\n"
-    "It is an editorial project of the team behind it. It never asks "
-    "for passwords, verification codes or card details in the chat.\n\n"
-    "<b>How often is it updated?</b>\n"
-    "The selection of articles is refreshed each season.\n\n"
+    "<b>What is this bot?</b>\n"
+    f"A travel guide to France by the team behind {BRAND}. Everything "
+    "you need is readable right here in the chat.\n\n"
+    "<b>Does it ask for personal data?</b>\n"
+    "No. It never asks for passwords, verification codes or card "
+    "details.\n\n"
     "<b>How do I mute notifications?</b>\n"
-    "From the Telegram chat settings you can mute or disable "
-    "notifications.\n\n"
-    "<b>Can I share an article?</b>\n"
-    "Yes. Use Telegram's forward function."
+    "Use the Telegram chat settings to mute or disable them.\n\n"
+    "<b>Can I share a chapter?</b>\n"
+    "Yes, use Telegram's forward function."
 )
 
 TEXT_ABOUT = (
     f"ℹ️ <b>About {BRAND}</b>\n\n"
-    f"{BRAND} gathers, each season, a few reads about Belgium: "
-    "museums, traditional food and beautiful places to visit.\n\n"
-    "The idea is simple: short, pleasant texts to read right in "
-    "Telegram, without ads and without rushing."
+    f"<b>{BRAND_FULL}</b> is an English-language edition about France: "
+    "news, culture and everyday life.\n\n"
+    "This bot is our pocket travel guide: short, practical chapters "
+    "about places, food and getting around, to read in Telegram "
+    "without ads."
 )
 
 
@@ -188,7 +249,7 @@ def contact_text():
     )
     return (
         "✏️ <b>Contact</b>\n\n"
-        "For suggestions, corrections or article ideas:\n"
+        "For suggestions, corrections or ideas for new chapters:\n"
         + email_line
         + "Thank you for every message!"
     )
@@ -198,47 +259,57 @@ def contact_text():
 # SCREENS: callback_data -> (text, buttons)
 # ============================================
 SCREENS = {
-    "headlines": (
-        TEXT_HEADLINES,
+    "guide": (
+        TEXT_GUIDE,
         [
-            [btn("🎨 Culture — autumn exhibitions", "culture")],
-            [btn("🍺 Food — classic recipes", "cuisine")],
-            [btn("🏠 Travel — five villages", "travel")],
+            [btn("🗼 Paris", "paris"), btn("🏰 Regions", "regions")],
+            [btn("🏡 Villages", "villages"), btn("🥐 Food", "food")],
+            [btn("🚆 Getting around", "transport"), btn("💡 Good to know", "tips")],
             [btn(*BTN_MENU)],
         ],
     ),
-    "culture": (TEXT_CULTURE, article_rows()),
-    "cuisine": (TEXT_CUISINE, article_rows()),
-    "travel": (TEXT_TRAVEL, article_rows()),
+    "paris": (TEXT_PARIS, guide_page_rows("regions", "Regions")),
+    "regions": (TEXT_REGIONS, guide_page_rows("villages", "Villages")),
+    "villages": (TEXT_VILLAGES, guide_page_rows("food", "Food")),
+    "food": (TEXT_FOOD, guide_page_rows("transport", "Getting around")),
+    "transport": (TEXT_TRANSPORT, guide_page_rows("tips", "Good to know")),
+    "tips": (TEXT_TIPS, guide_page_rows()),
     "menu": (
         TEXT_MENU,
         [
-            [site_btn()],
-            [btn(*BTN_HEADLINES)],
+            [btn(*BTN_GUIDE)],
             [btn("📖 Glossary", "glossary"), btn("❓ FAQ", "faq")],
             [btn("✏️ Contact", "contact"), btn("ℹ️ About", "about")],
+            [site_btn()],
         ],
     ),
-    "glossary": (TEXT_GLOSSARY, [[btn(*BTN_HEADLINES)], [btn(*BTN_MENU)]]),
-    "faq": (TEXT_FAQ, [[btn(*BTN_HEADLINES)], [btn(*BTN_MENU)]]),
-    "contact": (
-        contact_text(),
-        [[btn(*BTN_MENU), btn("ℹ️ About", "about")]],
-    ),
+    "glossary": (TEXT_GLOSSARY, [[btn(*BTN_GUIDE), btn(*BTN_MENU)]]),
+    "faq": (TEXT_FAQ, [[btn(*BTN_GUIDE), btn(*BTN_MENU)]]),
+    "contact": (contact_text(), [[btn(*BTN_MENU), btn("ℹ️ About", "about")]]),
     "about": (
         TEXT_ABOUT,
-        [[site_btn()], [btn(*BTN_MENU), btn("✏️ Contact", "contact")]],
+        [[btn(*BTN_GUIDE)], [btn(*BTN_MENU), btn("✏️ Contact", "contact")], [site_btn()]],
     ),
 }
+
+
+def start_markup():
+    return make_markup([[btn(*BTN_GUIDE)], [btn(*BTN_MENU)]])
 
 
 # ============================================
 # HANDLERS
 # ============================================
-@bot.message_handler(commands=["start"])
+@bot.message_handler(commands=["start", "help"])
 def start(message):
-    markup = make_markup([[site_btn()], [btn(*BTN_HEADLINES), btn(*BTN_MENU)]])
-    bot.send_message(message.chat.id, TEXT_START, reply_markup=markup)
+    bot.send_message(message.chat.id, TEXT_START, reply_markup=start_markup())
+
+
+@bot.message_handler(commands=["guide", "menu"])
+def open_screen_command(message):
+    key = message.text.split()[0].lstrip("/").split("@")[0]
+    text, rows = SCREENS[key]
+    bot.send_message(message.chat.id, text, reply_markup=make_markup(rows))
 
 
 @bot.callback_query_handler(func=lambda call: call.data in SCREENS)
@@ -253,8 +324,24 @@ def show_screen(call):
             message_id=call.message.message_id,
             reply_markup=markup,
         )
-    except ApiTelegramException:
+    except ApiTelegramException as e:
+        if "message is not modified" in str(e):
+            return  # same screen tapped twice: nothing to do
         bot.send_message(call.message.chat.id, text, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def unknown_callback(call):
+    bot.answer_callback_query(call.id, "This button is outdated. Send /start.")
+
+
+@bot.message_handler(func=lambda m: True, content_types=["text"])
+def fallback(message):
+    bot.send_message(
+        message.chat.id,
+        "Use the buttons below to open the guide 👇",
+        reply_markup=start_markup(),
+    )
 
 
 def main() -> None:
@@ -264,7 +351,12 @@ def main() -> None:
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-    bot.set_chat_menu_button(menu_button=types.MenuButtonDefault(type="default"))
+    bot.set_my_commands([
+        types.BotCommand("start", "Start the bot"),
+        types.BotCommand("guide", "Open the France guide"),
+        types.BotCommand("menu", "Contents"),
+    ])
+    bot.set_chat_menu_button(menu_button=types.MenuButtonCommands(type="commands"))
 
     logging.info("%s bot is starting", BRAND)
     bot.infinity_polling(skip_pending=True)
